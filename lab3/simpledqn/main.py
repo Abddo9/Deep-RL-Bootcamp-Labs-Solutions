@@ -206,7 +206,7 @@ class DQN(object):
         # Hint3: You might also find https://docs.chainer.org/en/stable/reference/generated/chainer.functions.select_item.html useful
 
         "*** YOUR CODE HERE ***"
-        target = np.zeros(l_done.shape[0])
+        target = np.zeros(l_done.shape[0])  #1
         target[l_done == 1] = l_rew[l_done == 1]
         target[l_done == 0] = l_rew[l_done == 0] + self._discount * np.max(self._qt.forward(l_next_obs[l_done == 0]).data, axis=-1)
 
@@ -228,9 +228,17 @@ class DQN(object):
         # Hint: You may want to make use of the following fields: self._discount, self._q, self._qt
         # Hint2: Q-function can be called by self._q.forward(argument)
         # Hint3: You might also find https://docs.chainer.org/en/stable/reference/generated/chainer.functions.select_item.html useful
-        loss = C.Variable(np.array([0.]))  # TODO: replace this line
         "*** YOUR CODE HERE ***"
-        return loss
+        target = np.zeros(l_done.shape[0]) #2
+        target[l_done == 1] = l_rew[l_done == 1]
+
+        best_q_action = np.argmax(self._q.forward(l_next_obs[l_done == 0]).data, axis=-1)
+        qt_action_values = F.select_item(self._qt.forward(l_next_obs[l_done == 0]), best_q_action)
+        target[l_done == 0] = l_rew[l_done == 0] + self._discount * qt_action_values.data
+
+        actual = F.select_item(self._q.forward(l_obs), l_act)
+
+        return np.sum((target-actual)**2)/l_done.shape[0]
 
     def train_q(self, l_obs, l_act, l_rew, l_next_obs, l_done):
         """Update Q-value function by sampling from the replay buffer."""
@@ -298,7 +306,7 @@ class DQN(object):
                     l_obs, l_act, l_rew, l_obs_prime, l_done)
                 l_tq_squared_error.append(td_squared_error)
 
-            if (itr + 1) % self._log_freq == 0 and len(l_episode_return) > 5:
+            if (itr + 1) % self._log_freq == 0: #and len(l_episode_return) > 5:
                 log_itr += 1
                 logger.logkv('Iteration', log_itr)
                 logger.logkv('Steps', itr)
@@ -343,7 +351,7 @@ def main(env_id, double, render):
         def get_act_dim(x): return x.action_space.n
         obs_preprocessor = preprocess_obs_gridworld
         max_steps = 100000
-        log_freq = 1000
+        log_freq = 10000
         target_q_update_freq = 100
         initial_step = 0
         log_dir = "data/local/dqn_gridworld"
